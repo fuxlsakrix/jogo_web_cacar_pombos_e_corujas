@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Caçador de Pombos</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background-color: #aee0f7;
+    }
+
+    #gameCanvas {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Esconder textos de pombos e corujas */
+    #score, #corujasScore {
+      display: none;
+    }
+
+    /* Mostrar timer */
+    #timer {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 24px;
+      background: rgba(255,255,255,0.7);
+      padding: 5px 10px;
+      border-radius: 10px;
+      color: #222;
+      z-index: 10;
+    }
+
+    /* Mostrar botão reiniciar */
+    #restartBtn {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: pointer;
+      font-size: 20px;
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      z-index: 10;
+    }
+
+    #restartBtn:hover {
+      background-color: #45a049;
+    }
+
+    /* Caixa que aparece depois do jogo - removida */
+    #resultBox {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Pombos apanhados: 0</div>
+  <div id="corujasScore">Corujas apanhadas: 0</div>
+  <div id="timer">Tempo: 30</div>
+  <button id="restartBtn">Reiniciar Jogo</button>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- removido div do resultado com iframe -->
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const corujasDisplay = document.getElementById("corujasScore");
+    const timerDisplay = document.getElementById("timer");
+    const restartBtn = document.getElementById("restartBtn");
+    // const resultBox = document.getElementById("resultBox"); // removido
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let pombos = [];
+    let corujas = [];
+    let score = 0;
+    let corujasApanhadas = 0;
+    let tempoRestante = 5;
+    let gameOver = false;
+    let animationId;
+    let cronometro;
+
+    class Pombo {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = 120;
+        this.speedX = (Math.random() * 3) + 1;
+        this.speedY = (Math.random() * 3) + 1;
+        this.dirX = Math.random() < 0.5 ? 1 : -1;
+        this.dirY = Math.random() < 0.5 ? 1 : -1;
+        this.image = new Image();
+        this.image.src = "pombo.png";
+      }
+
+      draw() {
+        ctx.drawImage(this.image, this.x, this.y, this.size, this.size);
+      }
+
+      update() {
+        this.x += this.speedX * this.dirX;
+        this.y += this.speedY * this.dirY;
+        if (this.x < 0 || this.x + this.size > canvas.width) this.dirX *= -1;
+        if (this.y < 0 || this.y + this.size > canvas.height) this.dirY *= -1;
+      }
+    }
+
+    class Coruja {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = 120;
+        this.speedX = (Math.random() * 3) + 1;
+        this.speedY = (Math.random() * 3) + 1;
+        this.dirX = Math.random() < 0.5 ? 1 : -1;
+        this.dirY = Math.random() < 0.5 ? 1 : -1;
+        this.image = new Image();
+        this.image.src = "coruja.png";
+      }
+
+      draw() {
+        ctx.drawImage(this.image, this.x, this.y, this.size, this.size);
+      }
+
+      update() {
+        this.x += this.speedX * this.dirX;
+        this.y += this.speedY * this.dirY;
+
+        if (this.x < 0) {
+          this.x = 0;
+          this.dirX = 1;
+        } else if (this.x + this.size > canvas.width) {
+          this.x = canvas.width - this.size;
+          this.dirX = -1;
+        }
+
+        if (this.y < 0) {
+          this.y = 0;
+          this.dirY = 1;
+        } else if (this.y + this.size > canvas.height) {
+          this.y = canvas.height - this.size;
+          this.dirY = -1;
+        }
+      }
+    }
+
+    function spawnPombo() {
+      pombos.push(new Pombo());
+    }
+
+    function spawnCoruja() {
+      corujas.push(new Coruja());
+    }
+
+    function startTimer() {
+      cronometro = setInterval(() => {
+        if (tempoRestante > 0) {
+          tempoRestante--;
+          timerDisplay.textContent = `Tempo: ${tempoRestante}`;
+        } else {
+          clearInterval(cronometro);
+          gameOver = true;
+          cancelAnimationFrame(animationId);
+          timerDisplay.textContent = "Tempo: 0";
+
+          alert(`Fim do jogo!\nPombos apanhados: ${score}\nCorujas apanhadas: ${corujasApanhadas}`);
+
+          // Removi o redirecionamento / esconder jogo
+          // O jogo simplesmente para aqui e fica a possibilidade de reiniciar
+        }
+      }, 1000);
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pombos.forEach(p => { p.update(); p.draw(); });
+      corujas.forEach(c => { c.update(); c.draw(); });
+
+      if (!gameOver) animationId = requestAnimationFrame(animate);
+    }
+
+    function processClick(x, y) {
+      if (gameOver) return;
+
+      for (let i = 0; i < pombos.length; i++) {
+        const p = pombos[i];
+        if (x >= p.x && x <= p.x + p.size && y >= p.y && y <= p.y + p.size) {
+          pombos.splice(i, 1);
+          score++;
+          scoreDisplay.textContent = "Pombos apanhados: " + score;
+          spawnPombo();
+          return;
+        }
+      }
+
+      for (let i = 0; i < corujas.length; i++) {
+        const c = corujas[i];
+        if (x >= c.x && x <= c.x + c.size && y >= c.y && y <= c.y + c.size) {
+          corujas.splice(i, 1);
+          corujasApanhadas++;
+          corujasDisplay.textContent = "Corujas apanhadas: " + corujasApanhadas;
+          spawnCoruja();
+          return;
+        }
+      }
+    }
+
+    canvas.addEventListener("click", function (e) {
+      processClick(e.clientX, e.clientY);
+    });
+
+    canvas.addEventListener("touchstart", function (e) {
+      const touch = e.touches[0];
+      processClick(touch.clientX, touch.clientY);
+    });
+
+    function iniciarJogo() {
+      // Reset visibilidade
+      canvas.style.display = "block";
+      restartBtn.style.display = "block";
+      timerDisplay.style.display = "block";
+      // resultBox.style.display = "none"; // removido
+
+      pombos = [];
+      corujas = [];
+      score = 0;
+      corujasApanhadas = 0;
+      tempoRestante = 30;
+      gameOver = false;
+      scoreDisplay.textContent = "Pombos apanhados: 0";
+      corujasDisplay.textContent = "Corujas apanhadas: 0";
+      timerDisplay.textContent = "Tempo: 30";
+      clearInterval(cronometro);
+      cancelAnimationFrame(animationId);
+
+      for (let i = 0; i < 5; i++) {
+        spawnPombo();
+        spawnCoruja();
+      }
+
+      startTimer();
+      animate();
+    }
+
+    restartBtn.addEventListener("click", iniciarJogo);
+    iniciarJogo();
+  </script>
+</body>
+</html>
